@@ -5,6 +5,7 @@ import type { GiphyResponse } from '../interfaces/giphy.interface';
 import { Gif } from '../interfaces/gif.interface';
 import { GifMapper } from '../mapper/gif.mapper';
 import TrendingPage from '../pages/trending-page/trending-page';
+import { map, tap } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -35,6 +36,28 @@ export class GifService {
     this.trendingGifs.set(gifs);
     console.log(gifs);
   });
+ }
+
+ searchGifs(query: string) {
+
+  return this.http.get<GiphyResponse>(`${environment.giphyUrl}/search`, {
+    params: {
+      api_key: environment.giphyApiKey,
+      q: query,
+      limit: '20',
+      rating: 'g',
+    },
+  }).pipe(
+    map(({data}) => data),
+    map((items) => GifMapper.mapHiphyItemsToGifArray(items)),
+
+    //TODO
+
+  );
+  // .subscribe((response) => {
+  //   const gifs = GifMapper.mapHiphyItemsToGifArray(response.data);
+  //   console.log(gifs);
+  // });
  }
 
 }
