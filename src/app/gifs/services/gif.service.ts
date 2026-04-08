@@ -4,8 +4,7 @@ import { environment } from '@environments/environment';
 import type { GiphyResponse } from '../interfaces/giphy.interface';
 import { Gif } from '../interfaces/gif.interface';
 import { GifMapper } from '../mapper/gif.mapper';
-import TrendingPage from '../pages/trending-page/trending-page';
-import { map, tap } from 'rxjs';
+import { map, Observable, tap } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -13,9 +12,12 @@ import { map, tap } from 'rxjs';
 
 export class GifService {
 
+  private readonly searchHistoryStorageKey = 'searchHistory';
+
   private http = inject(HttpClient);
 
   constructor() {
+    this.loadSearchHistoryFromLocalStorage();
     this.loadTrendingGifs();
   }
 
@@ -25,6 +27,8 @@ export class GifService {
 
   searchHistory = signal<Record<string, Gif[]>>({});
   searchHistoryKeys = computed(() => Object.keys(this.searchHistory()));
+
+
 
  loadTrendingGifs() {
 
@@ -41,12 +45,28 @@ export class GifService {
   });
  }
 
- searchGifs(query: string) {
+ searchGifs(query: string): Observable<Gif[]> {
+
+  const normalizedQuery = query.trim().toLowerCase();
+
+  if (!normalizedQuery) {
+    return this.http.get<GiphyResponse>(`${environment.giphyUrl}/search`, {
+      params: {
+        api_key: environment.giphyApiKey,
+        q: normalizedQuery,
+        limit: '20',
+        rating: 'g',
+      },
+    }).pipe(
+      map(({data}) => data),
+      map((items) => GifMapper.mapHiphyItemsToGifArray(items))
+    );
+  }
 
   return this.http.get<GiphyResponse>(`${environment.giphyUrl}/search`, {
     params: {
       api_key: environment.giphyApiKey,
-      q: query,
+      q: normalizedQuery,
       limit: '20',
       rating: 'g',
     },
@@ -57,16 +77,45 @@ export class GifService {
     //TODO
     tap((gifs) => {
       const currentHistory = this.searchHistory();
+
+      // Keep latest search first and avoid duplicate keys with different order.
+      const { [normalizedQuery]: _, ...restHistory } = currentHistory;
+
       this.searchHistory.set({
-        ...currentHistory,
-        [query]: gifs,
+        [normalizedQuery]: gifs,
+        ...restHistory,
       });
+
+      localStorage.setItem(this.searchHistoryStorageKey, JSON.stringify(this.searchHistory()));
     })
   );
   // .subscribe((response) => {
   //   const gifs = GifMapper.mapHiphyItemsToGifArray(response.data);
   //   console.log(gifs);
   // });
+ }
+
+ getHistoryGifs(query: string): Gif[] {
+  const history = this.searchHistory();
+  return history[query] ?? [];
+ }
+
+ private loadSearchHistoryFromLocalStorage(): void {
+  const storedHistory = localStorage.getItem(this.searchHistoryStorageKey);
+
+  if (!storedHistory) {
+    return;
+  }
+
+  try {
+    const parsedHistory: unknown = JSON.parse(storedHistory);
+
+    if (parsedHistory && typeof parsedHistory === 'object') {
+      this.searchHistory.set(parsedHistory as Record<string, Gif[]>);
+    }
+  } catch {
+    localStorage.removeItem(this.searchHistoryStorageKey);
+  }
  }
 
 }

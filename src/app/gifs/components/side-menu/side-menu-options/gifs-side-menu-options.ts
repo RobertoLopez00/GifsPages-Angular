@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from "@angular/router";
-import { GifService } from 'src/app/gifs/services/gif.service';
+import { GifService } from '../../../services/gif.service';
 
 interface MenuOption {
   label: string;
@@ -15,9 +15,10 @@ interface MenuOption {
   templateUrl: './gifs-side-menu-options.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
+
 export class GifsSideMenuOptions {
 
-  gifService = inject(GifService).searchHistoryKeys;
+  searchHistoryKeys = inject(GifService).searchHistoryKeys;
 
 
   menuOptions: MenuOption[] = [

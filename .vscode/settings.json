@@ -4,5 +4,6 @@
             "skipStyle": true,
             "externalTemplate": true
         }
-    }
+    },
+    "typescript.tsserver.experimental.enableProjectDiagnostics": false
 }
